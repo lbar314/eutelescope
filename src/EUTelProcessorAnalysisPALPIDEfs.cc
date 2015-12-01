@@ -169,7 +169,8 @@ void EUTelProcessorAnalysisPALPIDEfs::init() {
   if (_chipVersion != 3) _nSectors = 4;
   else _nSectors = 8;
   
-  for(int iz=0; iz < _nTelPlanes ; iz++)
+  for(int iz=0; iz < _nTelPlanes ; iz++) 
+  {
     if(_planeID[iz]==_dutID)
     {
       dutZ = geo::gGeometry().siPlaneZPosition(iz);
@@ -204,6 +205,39 @@ void EUTelProcessorAnalysisPALPIDEfs::init() {
       gRotation[1] =  gRotation[1]*3.1415926/180.; //
       gRotation[2] =  gRotation[2]*3.1415926/180.; //
     }
+    else
+    {
+      trackZ[iz] = geo::gGeometry().siPlaneZPosition(iz);
+      tracklayerIndex[iz] = iz;
+      trackxZero[iz]        = geo::gGeometry().siPlaneXPosition(tracklayerIndex[iz]); // mm
+      trackyZero[iz]        = geo::gGeometry().siPlaneYPosition(tracklayerIndex[iz]); // mm
+      trackxSize[iz]        = geo::gGeometry().siPlaneXSize(tracklayerIndex[iz]);     // mm
+      trackySize[iz]        = geo::gGeometry().siPlaneYSize(tracklayerIndex[iz]);     // mm
+      trackxPitch       = geo::gGeometrtracky().siPlaneXPitch(tracklayerIndex[iz]);    // mm
+      trackyPitch       = geo::gGeometry().siPlaneYPitch(layerIndetrackx);    // mm
+      trackxPointing[iz*2] = geo::gGeometry().siPlaneRotation1(tracklayerIndex[iz]); // was -1 ;
+      trackxPointing[iz*2+1] = geo::gGeometry().siPlaneRotation2(tracklayerIndex[iz]); // was  0 ;
+      trackyPointing[iz*2] = geo::gGeometry().siPlaneRotation3(tracklayerIndex[iz]); // was  0 ;
+      trackyPointing[iz*2+1] = geo::gGeometry().siPlaneRotation4(tracklayerIndex[iz]); // was -1 ;
+      trackxPixel       = geo::gGeometry().siPlaneXNpixels(tracklayerIndex[iz]);
+      trackyPixel       = geo::gGeometry().siPlaneYNpixels(tracklayerIndex[iz]);
+      try
+      {
+        trackgRotation[iz*3] = geo::gGeometry().siPlaneZRotation(tracklayerIndex[iz]); // Euler gamma ;
+        trackgRotation[iz*3+1] = geo::gGeometry().siPlaneYRotation(tracklayerIndex[iz]); // Euler beta  ;
+        trackgRotation[iz*3+2] = geo::gGeometry().siPlaneXRotation(tracklayerIndex[iz]); // Euler alpha ;
+      }
+      catch(...)
+      {
+        streamlog_out ( MESSAGE5 ) << " no sensor rotation is given in the GEAR steering file, assume NONE " << endl;
+      }
+      if ((trackgRotation[iz*3+1] != 0 && trackgRotation[iz*3+1] != 180) || (trackgRotation[iz*3+2] != 0 && trackgRotation[iz*3+2] != 180)) zDistance = sqrt(xSize*xSize+ySize*ySize);
+      else zDistance  = 0.1;
+      trackgRotation[iz*3] =  trackgRotation[iz*3]*3.1415926/180.; //
+      trackgRotation[iz*3+1] =  trackgRotation[iz*3+1]*3.1415926/180.; //
+      trackgRotation[iz*3+2] =  trackgRotation[iz*3+2]*3.1415926/180.; //
+    }
+
 //  float chi2MaxTemp[8] = {4,6,8,10,15,20,25,30};
   float chi2MaxTemp[1] = {30};
   for (unsigned int i=0; i<chi2Max.size(); i++)
@@ -272,8 +306,14 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
       int region, doubleColumn, address;
       while (noiseMaskFile >> region >> doubleColumn >> address)
       {
-        int x = AddressToColumn(region,doubleColumn,address);
-        int y = AddressToRow(address);
+        if (_chipVersion == 3) {
+          int x = AddressToColumnALPIDE3(region,doubleColumn,address);
+          int y = AddressToRowALPIDE3(address);
+        }
+        else {
+          int x = AddressToColumn(region,doubleColumn,address);
+          int y = AddressToRow(address);
+        }
         noiseMaskX.push_back(x);
         noiseMaskY.push_back(y);
         hotpixelHisto->Fill(x*xPitch+xPitch/2.,y*yPitch+yPitch/2.);
@@ -1222,6 +1262,20 @@ int EUTelProcessorAnalysisPALPIDEfs::AddressToRow(int AAddress)
   if ((AAddress % 4) == 3) Row -= 1;      // adjust the top-left pixel
   if ((AAddress % 4) == 0) Row += 1;      // adjust the bottom-right pixel
   return Row;
+}
+
+int EUTelProcessorAnalysisPALPIDEfs::AddressToRowALPIDE3(int AAddress)
+{
+  int Row = AAddress / 2;              
+  return Row;
+}
+
+int EUTelProcessorAnalysisPALPIDEfs::AddressToColumnALPIDE3(int ARegion, int ADoubleCol, int AAddress)
+{
+  int Column    = ARegion * 32 + ADoubleCol * 2;    // Double columns before ADoubleCol
+  int LeftRight = ((((AAddress % 4) == 1) || ((AAddress % 4) == 2)) ? 1:0);       // Left or right column within the double column
+  Column += LeftRight;
+  return Column;
 }
 
 bool EUTelProcessorAnalysisPALPIDEfs::emptyMiddle(vector<vector<int> > pixVector)
