@@ -86,7 +86,9 @@ EUTelProcessorAnalysisPALPIDEfs::EUTelProcessorAnalysisPALPIDEfs()
   yPixel(0),
   hotPixelCollectionVec(NULL),
   _chipVersion(3),
-  _nSectors(8)
+  _nSectors(8),
+  _nTrackInsideHole(0),
+  _nTrackOutsideHole(0)
   
 {
   _description="Analysis of the fitted tracks";
@@ -213,14 +215,14 @@ void EUTelProcessorAnalysisPALPIDEfs::init() {
       trackyZero[iz]        = geo::gGeometry().siPlaneYPosition(tracklayerIndex[iz]); // mm
       trackxSize[iz]        = geo::gGeometry().siPlaneXSize(tracklayerIndex[iz]);     // mm
       trackySize[iz]        = geo::gGeometry().siPlaneYSize(tracklayerIndex[iz]);     // mm
-      trackxPitch       = geo::gGeometrtracky().siPlaneXPitch(tracklayerIndex[iz]);    // mm
-      trackyPitch       = geo::gGeometry().siPlaneYPitch(layerIndetrackx);    // mm
+      trackxPitch[iz]       = geo::gGeometry().siPlaneXPitch(tracklayerIndex[iz]);    // mm
+      trackyPitch[iz]       = geo::gGeometry().siPlaneYPitch(tracklayerIndex[iz]);    // mm
       trackxPointing[iz*2] = geo::gGeometry().siPlaneRotation1(tracklayerIndex[iz]); // was -1 ;
       trackxPointing[iz*2+1] = geo::gGeometry().siPlaneRotation2(tracklayerIndex[iz]); // was  0 ;
       trackyPointing[iz*2] = geo::gGeometry().siPlaneRotation3(tracklayerIndex[iz]); // was  0 ;
       trackyPointing[iz*2+1] = geo::gGeometry().siPlaneRotation4(tracklayerIndex[iz]); // was -1 ;
-      trackxPixel       = geo::gGeometry().siPlaneXNpixels(tracklayerIndex[iz]);
-      trackyPixel       = geo::gGeometry().siPlaneYNpixels(tracklayerIndex[iz]);
+      trackxPixel[iz]       = geo::gGeometry().siPlaneXNpixels(tracklayerIndex[iz]);
+      trackyPixel[iz]       = geo::gGeometry().siPlaneYNpixels(tracklayerIndex[iz]);
       try
       {
         trackgRotation[iz*3] = geo::gGeometry().siPlaneZRotation(tracklayerIndex[iz]); // Euler gamma ;
@@ -231,12 +233,13 @@ void EUTelProcessorAnalysisPALPIDEfs::init() {
       {
         streamlog_out ( MESSAGE5 ) << " no sensor rotation is given in the GEAR steering file, assume NONE " << endl;
       }
-      if ((trackgRotation[iz*3+1] != 0 && trackgRotation[iz*3+1] != 180) || (trackgRotation[iz*3+2] != 0 && trackgRotation[iz*3+2] != 180)) zDistance = sqrt(xSize*xSize+ySize*ySize);
-      else zDistance  = 0.1;
+      if ((trackgRotation[iz*3+1] != 0 && trackgRotation[iz*3+1] != 180) || (trackgRotation[iz*3+2] != 0 && trackgRotation[iz*3+2] != 180)) trackzDistance[iz] = sqrt(trackxSize[iz]*trackxSize[iz]+trackySize[iz]*trackySize[iz]);
+      else trackzDistance[iz] = 0.1;
       trackgRotation[iz*3] =  trackgRotation[iz*3]*3.1415926/180.; //
       trackgRotation[iz*3+1] =  trackgRotation[iz*3+1]*3.1415926/180.; //
       trackgRotation[iz*3+2] =  trackgRotation[iz*3+2]*3.1415926/180.; //
     }
+  }
 
 //  float chi2MaxTemp[8] = {4,6,8,10,15,20,25,30};
   float chi2MaxTemp[1] = {30};
@@ -306,13 +309,14 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
       int region, doubleColumn, address;
       while (noiseMaskFile >> region >> doubleColumn >> address)
       {
+        int x, y;
         if (_chipVersion == 3) {
-          int x = AddressToColumnALPIDE3(region,doubleColumn,address);
-          int y = AddressToRowALPIDE3(address);
+          x = AddressToColumnALPIDE3(region,doubleColumn,address);
+          y = AddressToRowALPIDE3(address);
         }
         else {
-          int x = AddressToColumn(region,doubleColumn,address);
-          int y = AddressToRow(address);
+          x = AddressToColumn(region,doubleColumn,address);
+          y = AddressToRow(address);
         }
         noiseMaskX.push_back(x);
         noiseMaskY.push_back(y);
@@ -434,6 +438,7 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
     streamlog_out ( ERROR4 ) << "Detector DUT has a singular rotation matrix. Sorry for quitting" << endl;
   }
 
+  /* Is it okay to check only for DUT plane's rotation? */
 
   int nFitHit = 0;
   if (fitHitAvailable)  nFitHit = colFit->getNumberOfElements();
@@ -458,12 +463,13 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
       if (abs(fitpos[2] - fitposcheck0[2]) < maxDistInPlane) {twoTracks = true; break;}
     }
     if (twoTracks && !_moreTracks) {streamlog_out ( MESSAGE1 ) << "2 tracks in event " << evt->getEventNumber() << ", skipping the event!" << endl; break;}
-    if (fitpos[2] >= dutZ-zDistance && fitpos[2] <= dutZ+zDistance )
+
+    if (fitpos[2] >= dutZ - zDistance && fitpos[2] <= dutZ+zDistance)
     {
       double xposfit=0, yposfit=0;
-      bool alignSuccess = RemoveAlign(preAlignmentCollectionVec,alignmentCollectionVec,alignmentPAlpideCollectionVec,fitpos,xposfit,yposfit);
+      bool alignSuccess = RemoveAlign(preAlignmentCollectionVec,alignmentCollectionVec,alignmentPAlpideCollectionVec,fitpos,xposfit,yposfit); //Remove alignment from hits
       if (!alignSuccess && _isFirstEvent) cerr << "Removing alignment did not work!" << endl;
-      if (xposfit > 0 && yposfit > 0 && xposfit < xSize && yposfit < ySize)
+      if (xposfit > 0 && yposfit > 0 && xposfit < xSize && yposfit < ySize) 
       {
         if (xposfit < limit || xposfit > xSize-limit || yposfit < limit || yposfit > ySize-limit) continue;
         int index = -1;
@@ -741,9 +747,33 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
 #if defined(USE_AIDA) || defined(MARLIN_USE_AIDA)
                 chi2Histo->Fill(chi2);
                 scatteringAngleHisto->Fill(xposfit,yposfit,abs(xpos-xposfit));
+                
+                bool insidehole = true;                
+                for (int lfit = ifit - 3; lfit < ifit + 3; lfit++) {
+                  TrackerHit *trackfithit = dynamic_cast<TrackerHit*>(colFit->getElementAt(lfit));
+                  double trackfitpos[3] = {0., 0., 0.};
+                  const double *trackfitpos0 = trackfithit->getPosition();
+                  trackfitpos[0] = trackfitpos0[0];
+                  trackfitpos[1] = trackfitpos0[1];
+                  trackfitpos[2] = trackfitpos0[2];
+                  
+                  int currentLayer = lfit%7;
+
+                  double trackxposfit =0 , trackyposfit = 0;
+                  bool trackalignStatus = RemoveAlign(preAlignmentCollectionVec,alignmentCollectionVec,alignmentPAlpideCollectionVec,trackfitpos,trackxposfit,trackyposfit, currentLayer);
+                  if (!trackalignStatus) cerr << "Removing alignment didn't work in Layer : " << currentLayer << endl;
+                  if ( !(trackxposfit < 26.2 + 1.3  && trackxposfit > 2.5 - 1.3 && trackyposfit < 12.2 && trackyposfit > 9.7) ) {
+                      streamlog_out ( MESSAGE4 ) << "Layer : " << currentLayer << " Xpos : " << trackxposfit << " yposfit : " << trackyposfit << " zposfit : " << trackfitpos[2] <<  endl;
+                      insidehole = false;
+                  }
+                }
+                if (insidehole) _nTrackInsideHole++;
+                else _nTrackOutsideHole++;
+                
                 for (unsigned int i=0; i<chi2Max.size(); i++)
                 {
-                  if (chi2 < chi2Max[i] && yposfit < 12.2 && yposfit > 9.7 && xposfit < 26.2+1.3 && xposfit > 2.5 -1.3)
+                    if (insidehole && chi2 < chi2Max[i] && yposfit < 12.2 && yposfit > 9.7 && xposfit < 26.2+1.3 && xposfit > 2.5 -1.3)
+//                  if (insidehole && chi2 < chi2Max[i] && yposfit < 12.2 && yposfit > 9.7 && xposfit < 26.2 && xposfit > 2.5)
                   {
                     residualXPAlpide[chi2Max[i]][index]->Fill(xpos-xposfit);
                     residualYPAlpide[chi2Max[i]][index]->Fill(ypos-yposfit);
@@ -762,6 +792,7 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
                     nResidualYPixel2by2[chi2Max[i]][index]->Fill(fmod(xposfit,2*xPitch),fmod(yposfit,2*yPitch));
                   }
                   else if (chi2 < chi2Max[i] && (yposfit < 9.2 || yposfit > 12.7 || xposfit > 27.4+1.3 || xposfit < 1.2 - 0.2))
+//                  else if (chi2 < chi2Max[i] && (yposfit < 9.2 || yposfit > 12.7 || xposfit > 27.4 || xposfit < 1.2))
                   {
                     residualXPCBPAlpide[chi2Max[i]][index]->Fill(xpos-xposfit);
                     residualYPCBPAlpide[chi2Max[i]][index]->Fill(ypos-yposfit);
@@ -803,8 +834,9 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
         }
         if(!pAlpideHit) {hitmapNoHitHisto->Fill(xposfit,yposfit); nNoPAlpideHit++;}
       }
-    }
+    } 
     else continue;
+
   }
   _nEvents++;
   if (fitHitAvailable) _nEventsWithTrack++;
@@ -1117,6 +1149,8 @@ void EUTelProcessorAnalysisPALPIDEfs::end()
   streamlog_out ( MESSAGE4 ) << "nEvents: " << _nEvents << endl;
   streamlog_out ( MESSAGE4 ) << "nEvents with tracks: " << _nEventsWithTrack << endl;
   streamlog_out ( MESSAGE4 ) << "nEvents without tracks: " << _nEvents-_nEventsWithTrack << endl;
+  streamlog_out ( MESSAGE4 ) << "nTracks Inside Hole : " << _nTrackInsideHole << endl;
+  streamlog_out ( MESSAGE4 ) << "nTracks Outside Hole : " << _nTrackOutsideHole << endl;
   settingsFile << _nEvents << ";";
 
   hitmapWrongHitHisto->Add(tmpHist,-1.);
@@ -1406,4 +1440,148 @@ bool EUTelProcessorAnalysisPALPIDEfs::RemoveAlign(LCCollectionVec * preAlignment
       yposfit = (xPointing[0]*fitpos[1]-yPointing[0]*fitpos[0])/(yPointing[1]*xPointing[0]-yPointing[0]*xPointing[1]);
       xposfit = fitpos[0]/xPointing[0] - xPointing[1]/xPointing[0]*yposfit;
   return 1;
+}
+
+bool EUTelProcessorAnalysisPALPIDEfs::RemoveAlign(LCCollectionVec * preAlignmentCollectionVec, LCCollectionVec * alignmentCollectionVec, LCCollectionVec * alignmentPAlpideCollectionVec, double* fitpos, double& xposfit, double& yposfit, int dutID)
+{
+      double xPlaneCenter    = geo::gGeometry().siPlaneXPosition(dutID);
+      double yPlaneCenter    = geo::gGeometry().siPlaneYPosition(dutID);
+      double zPlaneCenter    = geo::gGeometry().siPlaneZPosition(dutID);
+      TVector3 inputVec( fitpos[0] - xPlaneCenter, fitpos[1] - yPlaneCenter, fitpos[2] - zPlaneCenter);
+      EUTelAlignmentConstant * alignment = 0;
+      bool alignExist = false;
+      EUTelAlignmentConstant * preAlignment = 0;
+      bool prealignExist = false;
+      EUTelAlignmentConstant * alignmentPAlpide = 0;
+      bool alignPAlpideExist = false;
+      for (int iAlign=0; iAlign<preAlignmentCollectionVec->getNumberOfElements(); iAlign++)
+      {
+        preAlignment = static_cast< EUTelAlignmentConstant * > (preAlignmentCollectionVec->getElementAt(iAlign));
+        if (preAlignment->getSensorID() == dutID)
+        {
+          prealignExist = true;
+          inputVec[0] += preAlignment->getXOffset();
+          inputVec[1] += preAlignment->getYOffset();
+          inputVec[2] += preAlignment->getZOffset();
+          break;
+        }
+      }
+      if (!prealignExist) return false;//cerr << "No prealignment correction applied!" << endl;
+      for (int iAlign=0; iAlign<alignmentCollectionVec->getNumberOfElements(); iAlign++)
+      {
+        alignment = static_cast< EUTelAlignmentConstant* > (alignmentCollectionVec->getElementAt(iAlign));
+        if (alignment->getSensorID() == dutID)
+        {
+          alignExist = true;
+          inputVec[0] += alignment->getXOffset();
+          inputVec[1] += alignment->getYOffset();
+          inputVec[2] += alignment->getZOffset();
+          break;
+        }
+      }
+      if (!alignExist) return false;//cerr << "No alignment correction applied!" << endl;
+      if (!_oneAlignmentCollection)
+      {
+        for (int iAlign=0; iAlign<alignmentPAlpideCollectionVec->getNumberOfElements(); iAlign++)
+        {
+          alignmentPAlpide = static_cast< EUTelAlignmentConstant* > (alignmentPAlpideCollectionVec->getElementAt(iAlign));
+          if (alignmentPAlpide->getSensorID() == dutID)
+          {
+            alignPAlpideExist = true;
+            inputVec[0] += alignmentPAlpide->getXOffset();
+            inputVec[1] += alignmentPAlpide->getYOffset();
+            inputVec[2] += alignmentPAlpide->getZOffset();
+            break;
+          }
+        }
+        if (!alignPAlpideExist && _isFirstEvent) cerr << "No second alignment correction applied to the pAlpide!" << endl;
+        if  (alignPAlpideExist)
+        {
+          inputVec.RotateX( alignmentPAlpide->getAlpha() );
+          inputVec.RotateY( alignmentPAlpide->getBeta() );
+          inputVec.RotateZ( alignmentPAlpide->getGamma() );
+        }
+      }
+      if (alignExist)
+      {
+        inputVec.RotateX( alignment->getAlpha() );
+        inputVec.RotateY( alignment->getBeta() );
+        inputVec.RotateZ( alignment->getGamma() );
+      }
+
+      fitpos[0] = inputVec.X() + xPlaneCenter;
+      fitpos[1] = inputVec.Y() + yPlaneCenter;
+
+      fitpos[0] -= xZero;
+      fitpos[1] -= yZero;
+
+      double sign = 0;
+      if (dutID == 3) {
+        _EulerRotationBack( fitpos, gRotation );
+        if      ( xPointing[0] < -0.7 )       sign = -1 ;
+        else if ( xPointing[0] > 0.7 )       sign =  1 ;
+        else {
+          if       ( xPointing[1] < -0.7 )    sign = -1 ;
+          else if  ( xPointing[1] > 0.7 )    sign =  1 ;
+        }
+        fitpos[0] -=  ( -1 ) * sign * xSize / 2;
+
+        if      ( yPointing[0] < -0.7 )       sign = -1 ;
+        else if ( yPointing[0] > 0.7 )       sign =  1 ;
+        else {
+          if       ( yPointing[1] < -0.7 )    sign = -1 ;
+          else if  ( yPointing[1] > 0.7 )    sign =  1 ;
+        }
+        fitpos[1] -= ( -1 ) * sign * ySize / 2;
+        yposfit = (xPointing[0]*fitpos[1]-yPointing[0]*fitpos[0])/(yPointing[1]*xPointing[0]-yPointing[0]*xPointing[1]);
+        xposfit = fitpos[0]/xPointing[0] - xPointing[1]/xPointing[0]*yposfit;
+      }
+      else {
+        _EulerRotationBack( fitpos, trackgRotation, trackZ[dutID] , dutID);
+
+        if      ( trackxPointing[dutID*2] < -0.7 )       sign = -1 ;
+        else if ( trackxPointing[dutID*2] > 0.7 )       sign =  1 ;
+        else {
+          if       ( trackxPointing[dutID*2 + 1] < -0.7 )    sign = -1 ;
+          else if  ( trackxPointing[dutID*2 + 1] > 0.7 )    sign =  1 ;
+        }
+        fitpos[0] -=  ( -1 ) * sign * xSize / 2;
+
+        if      ( trackyPointing[dutID*2] < -0.7 )       sign = -1 ;
+        else if ( trackyPointing[dutID*2] > 0.7 )       sign =  1 ;
+        else {
+          if       ( trackyPointing[dutID*2 + 1] < -0.7 )    sign = -1 ;
+          else if  ( trackyPointing[dutID*2 + 1] > 0.7 )    sign =  1 ;
+        }
+        fitpos[1] -= ( -1 ) * sign * ySize / 2;
+        yposfit = (trackxPointing[dutID*2]*fitpos[1]-trackyPointing[dutID*2 + 0]*fitpos[0])/(trackyPointing[dutID*2 + 1]*trackxPointing[dutID*2 + 0]-trackyPointing[dutID*2 + 0]*trackxPointing[dutID*2 + 1]);
+        xposfit = fitpos[0]/trackxPointing[dutID*2] - trackxPointing[dutID*2 + 1]/trackxPointing[dutID*2 + 0]*yposfit;
+      }
+
+      return 1;
+}
+
+void EUTelProcessorAnalysisPALPIDEfs::_EulerRotationBack(double* _telPos, double* _gRotation, double zpos, int dutID) {
+
+    double z = _telPos[2] - zpos;
+    TVector3 _RotatedSensorHit( _telPos[0], _telPos[1], z );
+    TVector3 _Xaxis( 1.0, 0.0, 0.0 );
+    TVector3 _Yaxis( 0.0, 1.0, 0.0 );
+    TVector3 _Zaxis( 0.0, 0.0, 1.0 );
+    if( TMath::Abs(_gRotation[1 + dutID*3 ]) > 1e-6 )
+    {
+        _RotatedSensorHit.Rotate( -1.*_gRotation[1 + dutID*3 ], _Yaxis ); // in ZX
+    }
+    if( TMath::Abs(_gRotation[2 + dutID*3 ]) > 1e-6 )
+    {
+        _RotatedSensorHit.Rotate( -1.*_gRotation[2 + dutID*3 ], _Xaxis ); // in ZY
+    }
+    if( TMath::Abs(_gRotation[dutID*3]) > 1e-6 )
+    {
+        _RotatedSensorHit.Rotate( -1.*_gRotation[dutID*3], _Zaxis ); // in XY
+    }
+
+    _telPos[0] = _RotatedSensorHit.X();
+    _telPos[1] = _RotatedSensorHit.Y();
+    _telPos[2] = _RotatedSensorHit.Z() + zpos;
 }
