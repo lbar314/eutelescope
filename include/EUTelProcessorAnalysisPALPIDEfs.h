@@ -31,8 +31,11 @@ public:
   virtual void init() ;
   virtual void processEvent( LCEvent * evt ) ;
   void _EulerRotationBack(double* _telPos, double* _gRotation);
+  void _EulerRotationBack(double* _telPos, double* _gRotation, double zpos, int dutID);
   int AddressToColumn(int ARegion, int ADoubleCol, int AAddress);
   int AddressToRow(int AAddress);
+  int AddressToColumnALPIDE3(int ARegion, int ADoubleCol, int AAddress);
+  int AddressToRowALPIDE3(int AAddress);
 #if defined(USE_AIDA) || defined(MARLIN_USE_AIDA)
   //! Book histograms
   /*! This method is used to prepare the needed directory structure
@@ -45,6 +48,7 @@ public:
   virtual void end();
   bool emptyMiddle(std::vector<std::vector<int> > pixVector);
   bool RemoveAlign(LCCollectionVec * preAlignmentCollectionVec, LCCollectionVec * alignmentCollectionVec, LCCollectionVec * alignmentPAlpideCollectionVec, double* fitpos, double& xposfit, double& yposfit);
+  bool RemoveAlign(LCCollectionVec * preAlignmentCollectionVec, LCCollectionVec * alignmentCollectionVec, LCCollectionVec * alignmentPAlpideCollectionVec, double* fitpos, double& xposfit, double& yposfit, int );
 protected:
   //! Fill histogram switch
   /*! This boolean is used to switch on and off the filling of
@@ -96,8 +100,11 @@ protected:
   std::map<int,int> yPairs;
   std::vector< std::vector<int> > symmetryGroups;
   double zDistance;
+  double trackzDistance[7];
   int _nEvents;
   int _nEventsWithTrack;
+  int _nTrackInsideHole;
+  int _nTrackOutsideHole;
   double _minTimeStamp;
   int _nSectors;
   int _chipVersion;
@@ -139,6 +146,23 @@ private:
   TProfile2D* scatteringAngleHisto;
   TProfile2D* chi22DHisto;
   TH2I* tmpHist;
+
+  double trackZ[7];
+  double tracklayerIndex[7];
+  double trackxZero[7];
+  double trackyZero[7];
+  double trackxSize[7];
+  double trackySize[7];
+  double trackxPitch[7];
+  double trackyPitch[7];
+  double trackxPointing[14];
+  double trackyPointing[14];
+  double trackxPixel[7];
+  double trackyPixel[7];
+  double trackgRotation[21];
+
+
+
   std::map<float, std::map<int,TH1I*> > residualXPAlpide;
   std::map<float, std::map<int,TH1I*> > residualYPAlpide;
   std::map<float, std::map<int,TH1I*> > residualZPAlpide;
