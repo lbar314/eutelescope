@@ -134,7 +134,7 @@ void Cluster::set_values (int s, vector<int> a, vector<int> b) {
     yNorm = y[i] - yMin;
     int bit_position = yNorm*cs + xNorm;
     int byte_position = bit_position>>3;
-    int sub_bit_position = bit_position%8;
+    int sub_bit_position = bit_position%8;//position within the byte
     char tmp_char = pattern[byte_position+2];
     tmp_char += (1 << (7 - sub_bit_position));
     pattern[byte_position+2];
