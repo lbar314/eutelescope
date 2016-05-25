@@ -9,35 +9,36 @@ Cluster aCluster;
 Cluster::Cluster()
     :size(0),
     x(0),
-    y(0){
-} 
+    y(0),
+    pattern(){
+}
 
 bool Cluster::operator==(Cluster c2) {
-  int x1Min = *min_element(x.begin(), x.end());                       
-  int x2Min = *min_element(c2.x.begin(), c2.x.end());                 
-  int y1Min = *min_element(y.begin(), y.end());                       
-  int y2Min = *min_element(c2.y.begin(), c2.y.end());                 
-  if (size != c2.Size()) return false;                                
-  bool isEqual = false;                                               
-  for (int i=0; i<size; i++)                                          
-  {                                                                   
-    for (int j=0; j<size; j++)                                        
-    {                                                                 
-      if (x[i]-x1Min == c2.x[j]-x2Min && y[i]-y1Min == c2.y[j]-y2Min) 
-      {                                                               
-        isEqual = true;                                               
-        break;                                                        
-      }                                                               
-    }                                                                 
-    if (isEqual)                                                      
-    {                                                                 
-      isEqual = false;                                                
-      continue;                                                       
-    }                                                                 
-    else return false;                                                
-  }                                                                   
-  return true;                                                        
-}                                                                     
+  int x1Min = *min_element(x.begin(), x.end());
+  int x2Min = *min_element(c2.x.begin(), c2.x.end());
+  int y1Min = *min_element(y.begin(), y.end());
+  int y2Min = *min_element(c2.y.begin(), c2.y.end());
+  if (size != c2.Size()) return false;
+  bool isEqual = false;
+  for (int i=0; i<size; i++)
+  {
+    for (int j=0; j<size; j++)
+    {
+      if (x[i]-x1Min == c2.x[j]-x2Min && y[i]-y1Min == c2.y[j]-y2Min)
+      {
+        isEqual = true;
+        break;
+      }
+    }
+    if (isEqual)
+    {
+      isEqual = false;
+      continue;
+    }
+    else return false;
+  }
+  return true;
+}
 
 
 
@@ -93,14 +94,15 @@ Cluster Cluster::rotate90(){
 
 void Cluster::set_values (int s, vector<int> a, vector<int> b) {
   size = s;
-  if (x.size() == 0)
+  if (x.size() == 0){
     for (int i=0; i<size; i++)
     {
       x.push_back(a[i]);
       y.push_back(b[i]);
     }
-  else 
-    for (int i=0; i<size; i++)
+  }
+  else {
+    for (int i=0; i<size; i++){
       if (x.size() <= (unsigned int)size)
       {
         x[i] = a[i];
@@ -111,6 +113,32 @@ void Cluster::set_values (int s, vector<int> a, vector<int> b) {
         x.push_back(a[i]);
         y.push_back(b[i]);
       }
+    }
+  }
+  int xMin = *min_element(x.begin(), x.end());
+  int xMax = *max_element(x.begin(), x.end());
+  int yMin = *min_element(x.begin(), x.end());
+  int yMax = *max_element(x.begin(), x.end());
+  int cs = xMax - xMin + 1; //column-span of the cluster
+  int rs = yMax - yMin + 1; //row-span of the cluster
+  int nBytes = (rs*cs)>>3; //Number
+  if(((rs*cs)%8)!=0) nBytes++;
+  pattern.resize(nBytes+2,0);
+  str[0]=rs;
+  str[1]=cs;
+  int xNorm;
+  int yNorm;
+  for (int i=0; i<size; i++)
+  {
+    xNorm = x[i] - xMin;
+    yNorm = y[i] - yMin;
+    int bit_position = yNorm*cs + xNorm;
+    int byte_position = bit_position>>3;
+    int sub_bit_position = bit_position%8;
+    char tmp_char = pattern[byte_position+2];
+    tmp_char += (1 << (7 - sub_bit_position));
+    pattern[byte_position+2];
+  }
 }
 
 void Cluster::NeighbourPixels(int x, int y, vector<int> xOriginal, vector<int> yOriginal, vector<int> &xNeighbour, vector<int> &yNeighbour)
@@ -119,12 +147,12 @@ void Cluster::NeighbourPixels(int x, int y, vector<int> xOriginal, vector<int> y
   for (int xTmp=x-1; xTmp<=x+1; xTmp++)
   {
     bool pixelExists = false;
-    if (xTmp==x-1 || xTmp==x+1) 
+    if (xTmp==x-1 || xTmp==x+1)
     {
       yTmp = y;
       for (unsigned int i=0; i<xOriginal.size(); i++)
       {
-        if (xTmp == xOriginal[i] && yTmp == yOriginal[i]) 
+        if (xTmp == xOriginal[i] && yTmp == yOriginal[i])
         {
           pixelExists = true;
           break;
@@ -142,15 +170,15 @@ void Cluster::NeighbourPixels(int x, int y, vector<int> xOriginal, vector<int> y
         yTmp = (j==0?y+1:y-1);
         for (unsigned int i=0; i<xOriginal.size(); i++)
         {
-          if (xTmp == xOriginal[i] && yTmp == yOriginal[i]) 
+          if (xTmp == xOriginal[i] && yTmp == yOriginal[i])
           {
             pixelExists = true;
             break;
           }
         }
-        if (pixelExists) 
+        if (pixelExists)
         {
-          pixelExists = false; 
+          pixelExists = false;
           continue;
         }
         xNeighbour.push_back(xTmp);
@@ -177,7 +205,7 @@ void Cluster::FindReferenceClusters(vector<Cluster> &clusterVec, int sizeMax)
     for (int iCluster=0; iCluster<clusterVecSize; iCluster++)
     {
       if (clusterVec[iCluster].Size() < size-1) continue;
-      Cluster cluster; 
+      Cluster cluster;
       vector<int> x = clusterVec[iCluster].getX();
       vector<int> y = clusterVec[iCluster].getY();
       for (int iPixel=0; iPixel<clusterVec[iCluster].Size(); iPixel++)
@@ -188,7 +216,7 @@ void Cluster::FindReferenceClusters(vector<Cluster> &clusterVec, int sizeMax)
         for (unsigned int i=0; i<xNeighbour.size();i++)
         {
           bool areadyExists = false;
-          if (x.size() < (unsigned int)size) 
+          if (x.size() < (unsigned int)size)
           {
             x.push_back(xNeighbour[i]);
             y.push_back(yNeighbour[i]);
@@ -200,9 +228,9 @@ void Cluster::FindReferenceClusters(vector<Cluster> &clusterVec, int sizeMax)
           }
           cluster.set_values(size,x,y);
           for (unsigned int k=0; k<clusterVec.size(); k++)
-            if (cluster == clusterVec[k]) 
+            if (cluster == clusterVec[k])
             {
-              areadyExists = true; 
+              areadyExists = true;
               break;
             }
           if (!areadyExists)
@@ -234,7 +262,7 @@ std::map<int,int> Cluster::SymmetryPairs(vector<Cluster> clusterVec, const char*
   std::map<int,int> pair;
   const char* typeX = "x";
   const char* typeY = "y";
-  if (type != typeX && type != typeY)   
+  if (type != typeX && type != typeY)
   {
     cerr << "Type has to be y or x, assuming x" << endl;
     type = "x";
@@ -254,7 +282,7 @@ std::map<int,int> Cluster::SymmetryPairs(vector<Cluster> clusterVec, const char*
           break;
         }
       if (alreadyAdded) continue;
-      if (cluster == clusterVec[j]) 
+      if (cluster == clusterVec[j])
       {
         if (i == j) break;
         pair.insert(make_pair(i,j));

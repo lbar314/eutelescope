@@ -674,7 +674,7 @@ void EUTelClusteringProcessor::processEvent (LCEvent * event)
     }
 
     if(_fillHistos)(dynamic_cast<AIDA::IHistogram1D*> (_timeStampHisto))->fill(event->getTimeStamp());
-    
+
     // prepare a pulse collection to add all clusters found
     // this can be either a new collection or already existing in the
     // event
@@ -1623,7 +1623,7 @@ void EUTelClusteringProcessor::zsBrickedClustering(LCEvent * evt, LCCollectionVe
             streamlog_out ( DEBUG1 ) << "Processing sparse data on detector " << sensorID << " with "
                                      << sparseData->size() << " pixels " << endl;
 
-            for( auto& sparsePixel: pixelVec ) {    
+            for( auto& sparsePixel: pixelVec ) {
 	        int   index  = matrixDecoder.getIndexFromXY( sparsePixel.getXCoord(), sparsePixel.getYCoord() );
                 float signal = sparsePixel.getSignal();
                 dataVec[ index ] = signal;

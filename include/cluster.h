@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <map>
+#include <string>
 
 class Cluster {
   public:
@@ -21,12 +22,13 @@ class Cluster {
     std::vector<int> getX() {return x;}
     std::vector<int> getY() {return y;}
     int Size() {return size;}
-    bool operator==(Cluster c2); 
+    bool operator==(Cluster c2);
     void getCenterOfGravity(float &xCenter, float &yCenter);
  protected:
     int size;
     std::vector<int> x;
     std::vector<int> y;
+    std::string pattern; //1° byte: row-span, 2° byte: column-span , remaining bytes: pattern of pixels
 };
 
 #endif
