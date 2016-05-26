@@ -124,8 +124,8 @@ void Cluster::set_values (int s, vector<int> a, vector<int> b) {
   int nBytes = (rs*cs)>>3; //Number
   if(((rs*cs)%8)!=0) nBytes++;
   pattern.resize(nBytes+2,0);
-  str[0]=rs;
-  str[1]=cs;
+  pattern[0]=rs;
+  pattern[1]=cs;
   int xNorm;
   int yNorm;
   for (int i=0; i<size; i++)
