@@ -25,6 +25,7 @@
 #include <memory>
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 
 using namespace lcio ;
 using namespace marlin ;
@@ -259,6 +260,7 @@ void EUTelProcessorAnalysisPALPIDEfs::init() {
 
 void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
 {
+  ofstream pattern_file("pattern_file.bin", ios::out | ios::binary);
   if (evt->getParameters().getIntVal("FLAG") == 100) return; //Excluding events with too large clusters
   int nTrackPerEvent = 0, nClusterAssociatedToTrackPerEvent = 0, nClusterPerEvent = 0;
   if (evt->getTimeStamp() < _minTimeStamp) return;
@@ -430,7 +432,7 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
     std::vector< std::vector<double> > posFakeEvent;
     int nHit = col->getNumberOfElements();
     for(int ihit=0; ihit< nHit; ihit++)
-    {
+    {pTpT
       TrackerHit *hit = dynamic_cast<TrackerHit*>( col->getElementAt(ihit) ) ;
       if( hit != 0 )
       {
@@ -1081,6 +1083,15 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
               if (abs(xposfit-(double)xCenter/xPixel*xSize)<limit && abs(yposfit-(double)yCenter/yPixel*ySize)<limit )
               {
                 isAssosiated = true;
+                //Writing the information about cluster shape and residues
+                float dX = (float)(xposfit-(double)xCenter/xPixel*xSize);
+                float dY = (float)(yposfit-(double)yCenter/yPixel*ySize);
+                std::string str = cluster.getPattern();
+                int stringSize = (int)(str.size());
+                pattern_file.write(reinterpret_cast<char *>(&stringSize), sizeof(int));
+                pattern_file.write(str.c_str(), stringSize);
+                pattern_file.write(reinterpret_cast<char *>(&cSum.dX), sizeof(float));
+                pattern_file.write(reinterpret_cast<char *>(&cSum.dZ), sizeof(float));
                 break;
               }
             }
@@ -1236,6 +1247,7 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
       nTracksAssociation[index]++;
     }
   }
+  pattern_file.close();
 }
 
 #ifdef MARLIN_USE_AIDA
