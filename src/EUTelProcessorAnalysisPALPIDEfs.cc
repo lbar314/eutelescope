@@ -166,7 +166,7 @@ EUTelProcessorAnalysisPALPIDEfs::EUTelProcessorAnalysisPALPIDEfs()
                              _minTimeStamp, static_cast<double>( 0 ) );
   registerOptionalParameter("ChipVersion", "Chip Version",
                              _chipVersion, static_cast<int>(3) );
-
+                             
   //  float defaultHoleSizeX[2] = {1, 29}; // Need to be changed if eutelescope has -std=c++11 flag
   //  float defaultHoleSizeY[2] = {9, 12.5}; // Need to be changed if eutelescope has -std=c++11 flag
 
