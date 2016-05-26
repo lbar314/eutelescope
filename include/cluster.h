@@ -24,6 +24,7 @@ class Cluster {
     int Size() {return size;}
     bool operator==(Cluster c2);
     void getCenterOfGravity(float &xCenter, float &yCenter);
+    std::string getPattern() {return pattern;}
  protected:
     int size;
     std::vector<int> x;
