@@ -432,7 +432,7 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
     std::vector< std::vector<double> > posFakeEvent;
     int nHit = col->getNumberOfElements();
     for(int ihit=0; ihit< nHit; ihit++)
-    {pTpT
+    {
       TrackerHit *hit = dynamic_cast<TrackerHit*>( col->getElementAt(ihit) ) ;
       if( hit != 0 )
       {
@@ -1090,8 +1090,8 @@ void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
                 int stringSize = (int)(str.size());
                 pattern_file.write(reinterpret_cast<char *>(&stringSize), sizeof(int));
                 pattern_file.write(str.c_str(), stringSize);
-                pattern_file.write(reinterpret_cast<char *>(&cSum.dX), sizeof(float));
-                pattern_file.write(reinterpret_cast<char *>(&cSum.dZ), sizeof(float));
+                pattern_file.write(reinterpret_cast<char *>(&dY), sizeof(float));
+                pattern_file.write(reinterpret_cast<char *>(&dX), sizeof(float));
                 break;
               }
             }
