@@ -117,8 +117,8 @@ void Cluster::set_values (int s, vector<int> a, vector<int> b) {
   }
   int xMin = *min_element(x.begin(), x.end());
   int xMax = *max_element(x.begin(), x.end());
-  int yMin = *min_element(x.begin(), x.end());
-  int yMax = *max_element(x.begin(), x.end());
+  int yMin = *min_element(y.begin(), y.end());
+  int yMax = *max_element(y.begin(), y.end());
   int cs = xMax - xMin + 1; //column-span of the cluster
   int rs = yMax - yMin + 1; //row-span of the cluster
   int nBytes = (rs*cs)>>3; //Number
@@ -137,7 +137,7 @@ void Cluster::set_values (int s, vector<int> a, vector<int> b) {
     int sub_bit_position = bit_position%8;//position within the byte
     char tmp_char = pattern[byte_position+2];
     tmp_char += (1 << (7 - sub_bit_position));
-    pattern[byte_position+2];
+    pattern[byte_position+2]=tmp_char;
   }
 }
 

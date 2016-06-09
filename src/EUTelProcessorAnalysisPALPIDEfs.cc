@@ -260,7 +260,7 @@ void EUTelProcessorAnalysisPALPIDEfs::init() {
 
 void EUTelProcessorAnalysisPALPIDEfs::processEvent(LCEvent *evt)
 {
-  ofstream pattern_file("pattern_file.bin", ios::out | ios::binary);
+  ofstream pattern_file("pattern_file.bin", ios::out | ios::app | ios::binary);
   if (evt->getParameters().getIntVal("FLAG") == 100) return; //Excluding events with too large clusters
   int nTrackPerEvent = 0, nClusterAssociatedToTrackPerEvent = 0, nClusterPerEvent = 0;
   if (evt->getTimeStamp() < _minTimeStamp) return;
